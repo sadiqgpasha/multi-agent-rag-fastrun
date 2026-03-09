@@ -52,13 +52,13 @@ This is a **"Team of Experts"** system. Instead of one AI trying to do everythin
 frontend/src/
 ├── app/
 │   ├── page.tsx          # Main Chat UI (Full Layout)
-│   ├── api/chat/route.ts  # Streaming Proxy to FastAPI
+│   ├── api/chat/route.ts  # Streaming proxy to FastAPI
 │   └── globals.css       # Tailwind v3 directives
 ├── components/
 │   └── ui/               # shadcn components
-└── lib/
-    └── ai.ts            # AI SDK configuration
 ```
+
+**Note:** This project uses a custom streaming implementation instead of the Vercel AI SDK for better control over the multi-agent workflow visualization.
 
 
 ## 2. **Backend (Python Agentic Stack)**
@@ -79,17 +79,18 @@ backend/
 ├── app/
 │   ├── main.py          # FastAPI app
 │   ├── agents/          # Multi-agent logic
-│   │   ├── supervisor.py
-│   │   ├── researcher.py
-│   │   └── synthesizer.py
+│   │   ├── state.py     # Agent state definition
+│   │   ├── nodes.py     # Researcher & Synthesizer nodes
+│   │   └── supervisor.py # Supervisor routing logic
 │   ├── rag/
 │   │   ├── pipeline.py
-│   │   └── retriever.py
+│   │   └── retriever.py # ChromaDB vector store
 │   └── api/
-│       └── chat.py
+│       └── chat.py      # Streaming chat endpoint
 ├── graphs/
 │   └── multi_agent_graph.py  # LangGraph workflow
-└── config.py
+├── pyproject.toml       # Poetry dependencies
+└── .env.example         # Environment variables template
 ```
 
 
@@ -116,7 +117,7 @@ embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v2:0")
 | Tool | Purpose | Local | Production |
 | :-- | :-- | :-- | :-- |
 | **PGVector** | Vector database | Docker Postgres | AWS RDS Postgres |
-| **Chroma** | Local dev vector store | `pip install chromadb` | - |
+| **ChromaDB** | Local dev vector store | `pip install langchain-chroma` | - |
 | **Redis** | Agent memory, sessions | Docker Redis | AWS ElastiCache |
 | **S3** | Document storage | Local MinIO | AWS S3 |
 
@@ -196,9 +197,7 @@ poetry add --group dev ruff pytest
 
 # Frontend setup
 cd ../frontend
-npx create-next-app@15 . --ts --tailwind --eslint --app
-npm i ai @ai-sdk/openai zod
-npx shadcn-ui@latest init
+npm install
 
 # Docker for local services
 docker-compose up -d postgres redis
@@ -209,18 +208,23 @@ docker-compose up -d postgres redis
 
 ```
 rag-multi-agent/
+├── .gitignore             # Ignore node_modules, .env, etc.
 ├── README.md
-├── docker-compose.yml       # Local PGVector + Redis
+├── docker-compose.yml     # Local PGVector + Redis
+├── install-dependencies.sh # One-click dependency installer
 ├── terraform/              # AWS infra
 ├── backend/
 │   ├── pyproject.toml
+│   ├── poetry.lock
+│   ├── .env.example       # AWS credentials template
 │   ├── app/
 │   ├── graphs/
 │   └── tests/
 ├── frontend/
+│   ├── package.json
+│   ├── package-lock.json
 │   ├── app/
-│   ├── components/
-│   └── lib/
+│   └── components/
 └── docs/
     └── deployment.md
 ```
@@ -241,7 +245,7 @@ aws configure
 docker-compose up -d
 
 # 3. Backend dev server (Poetry 2.0+)
-cd backend && poetry env activate && uvicorn app.main:app --reload
+cd backend && poetry run uvicorn app.main:app --reload
 
 # 4. Frontend dev server  
 cd frontend && npm run dev
