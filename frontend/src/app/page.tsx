@@ -1,16 +1,25 @@
 'use client';
 
-import { useChat } from 'ai/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Bot, User, Sparkles, Search, Brain, FileText, AlertCircle } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 type AgentStatus = 'idle' | 'supervisor' | 'researcher' | 'synthesizer' | 'error';
 
+type Message = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+};
+
 export default function Chat() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -23,7 +32,6 @@ export default function Chat() {
   // Track agent status based on loading state
   useEffect(() => {
     if (isLoading) {
-      // Cycle through agent statuses for visual feedback
       const sequence: AgentStatus[] = ['supervisor', 'researcher', 'synthesizer'];
       let index = 0;
       setAgentStatus(sequence[0]);
@@ -38,6 +46,76 @@ export default function Chat() {
       setAgentStatus('idle');
     }
   }, [isLoading]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: input.trim()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+    setError(null);
+
+    const assistantMessageId = `assistant-${Date.now()}`;
+    setMessages(prev => [...prev, {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: ''
+    }]);
+
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [...messages, userMessage] }),
+        signal: abortControllerRef.current.signal
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No reader available');
+
+      const decoder = new TextDecoder();
+      let accumulatedContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        accumulatedContent += chunk;
+
+        setMessages(prev => prev.map(msg => 
+          msg.id === assistantMessageId 
+            ? { ...msg, content: accumulatedContent }
+            : msg
+        ));
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        setError(err.message || 'An error occurred');
+        setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
+      }
+    } finally {
+      setIsLoading(false);
+      abortControllerRef.current = null;
+    }
+  }, [input, isLoading, messages]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+  };
 
   const getAgentIcon = (status: AgentStatus) => {
     switch (status) {
@@ -110,7 +188,7 @@ export default function Chat() {
               className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300"
             >
               <AlertCircle className="w-5 h-5 shrink-0" />
-              <p className="text-sm">{error.message || 'An error occurred. Please try again.'}</p>
+              <p className="text-sm">{error || 'An error occurred. Please try again.'}</p>
             </motion.div>
           )}
           
@@ -137,7 +215,7 @@ export default function Chat() {
                 ].map((suggestion, i) => (
                   <button 
                     key={i}
-                    onClick={() => handleInputChange({ target: { value: suggestion } } as any)}
+                    onClick={() => setInput(suggestion)}
                     className="p-4 text-left border border-gray-200 dark:border-zinc-800 rounded-2xl hover:bg-white dark:hover:bg-zinc-900 shadow-sm hover:shadow-md transition-all group group-active:scale-[0.98]"
                   >
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
@@ -215,7 +293,7 @@ export default function Chat() {
               onKeyDown={(e) => {
                 if(e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  if(input.trim()) handleSubmit(e as any);
+                  if(input.trim()) handleSubmit(e);
                 }
               }}
             />

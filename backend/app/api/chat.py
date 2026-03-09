@@ -20,14 +20,9 @@ class MessageDict(BaseModel):
 class ChatRequest(BaseModel):
     messages: List[MessageDict]
 
-async def event_generator(messages):
-    """Generate SSE events for the Vercel AI SDK"""
+async def event_generator(messages: List[MessageDict]):
+    """Generate simple text stream for AI SDK"""
     human_msg = HumanMessage(content=messages[-1].content)
-    full_content = ""
-    message_id = f"msg-{os.urandom(4).hex()}"
-    
-    # Send initial message event
-    yield f'data: {{"id": "{message_id}", "role": "assistant", "content": ""}}\n\n'
     
     try:
         async for event in graph.astream_events({"messages": [human_msg], "next": ""}, version="v2"):
@@ -38,12 +33,13 @@ async def event_generator(messages):
             # Stream tokens from Synthesizer node
             if event_type == "on_chat_model_stream" and node_name == "Synthesizer":
                 chunk = event.get("data", {}).get("chunk", {})
-                if hasattr(chunk, 'content') and chunk.content:
-                    full_content += chunk.content
-                    # Send SSE formatted for Vercel AI SDK
-                    yield f'data: {{"id": "{message_id}", "role": "assistant", "content": {json.dumps(full_content)}}}\n\n'
+                content = getattr(chunk, 'content', None)
+                
+                # Only stream if it's a string with actual content
+                if isinstance(content, str) and content:
+                    yield content
             
-            # Log agent activity for debugging
+            # Log agent activity
             elif event_type == "on_chain_start":
                 logger.info(f"Agent started: {node_name}")
             elif event_type == "on_chain_end":
@@ -51,13 +47,16 @@ async def event_generator(messages):
                 
     except Exception as e:
         logger.error(f"Error in event generator: {str(e)}")
-        error_msg = f"Error processing request: {str(e)}"
-        yield f'data: {{"id": "{message_id}", "role": "assistant", "content": {json.dumps(error_msg)}}}\n\n'
-    
-    # Send completion marker
-    yield f'data: {{"id": "{message_id}", "role": "assistant", "content": {json.dumps(full_content)}, "finish_reason": "stop"}}\n\n'
-    yield 'data: [DONE]\n\n'
+        yield f"Error: {str(e)}"
 
 @router.post("/")
 async def chat_interaction(request: ChatRequest):
-    return StreamingResponse(event_generator(request.messages), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(request.messages), 
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )

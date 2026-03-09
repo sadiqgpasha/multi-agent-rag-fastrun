@@ -229,16 +229,24 @@ rag-multi-agent/
 ## 🚀 Quick Start Commands
 
 ```bash
-# 1. Start local services
+# 1. Configure AWS credentials (required for Bedrock)
+# Option A: Create .env file
+cp backend/.env.example backend/.env
+# Edit backend/.env with your AWS credentials
+
+# Option B: Use AWS CLI (if installed)
+aws configure
+
+# 2. Start local services
 docker-compose up -d
 
-# 2. Backend dev server (Poetry 2.0+)
+# 3. Backend dev server (Poetry 2.0+)
 cd backend && poetry env activate && uvicorn app.main:app --reload
 
-# 3. Frontend dev server  
+# 4. Frontend dev server  
 cd frontend && npm run dev
 
-# 4. Deploy to AWS (Week 8)
+# 5. Deploy to AWS (Week 8)
 cd terraform && terraform apply
 ```
 
