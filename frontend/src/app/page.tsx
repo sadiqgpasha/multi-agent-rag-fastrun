@@ -1,12 +1,15 @@
 'use client';
 
 import { useChat } from 'ai/react';
-import { motion } from 'framer-motion';
-import { Send, Bot, User, Sparkles } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Send, Bot, User, Sparkles, Search, Brain, FileText, AlertCircle } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+
+type AgentStatus = 'idle' | 'supervisor' | 'researcher' | 'synthesizer' | 'error';
 
 export default function Chat() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat();
+  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat();
+  const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -16,6 +19,43 @@ export default function Chat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Track agent status based on loading state
+  useEffect(() => {
+    if (isLoading) {
+      // Cycle through agent statuses for visual feedback
+      const sequence: AgentStatus[] = ['supervisor', 'researcher', 'synthesizer'];
+      let index = 0;
+      setAgentStatus(sequence[0]);
+      
+      const interval = setInterval(() => {
+        index = (index + 1) % sequence.length;
+        setAgentStatus(sequence[index]);
+      }, 2000);
+      
+      return () => clearInterval(interval);
+    } else {
+      setAgentStatus('idle');
+    }
+  }, [isLoading]);
+
+  const getAgentIcon = (status: AgentStatus) => {
+    switch (status) {
+      case 'researcher': return <Search className="w-4 h-4" />;
+      case 'synthesizer': return <FileText className="w-4 h-4" />;
+      case 'supervisor': return <Brain className="w-4 h-4" />;
+      default: return <Bot className="w-4 h-4" />;
+    }
+  };
+
+  const getAgentLabel = (status: AgentStatus) => {
+    switch (status) {
+      case 'researcher': return 'Researcher is searching...';
+      case 'synthesizer': return 'Synthesizer is writing...';
+      case 'supervisor': return 'Supervisor is coordinating...';
+      default: return '';
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 dark:bg-zinc-950 font-sans selection:bg-blue-200 dark:selection:bg-blue-900">
@@ -34,11 +74,46 @@ export default function Chat() {
               </p>
             </div>
           </div>
+          
+          {/* Agent Activity Indicator */}
+          <AnimatePresence>
+            {agentStatus !== 'idle' && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-full"
+              >
+                <div className="text-blue-600 dark:text-blue-400">
+                  {getAgentIcon(agentStatus)}
+                </div>
+                <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+                  {getAgentLabel(agentStatus)}
+                </span>
+                <div className="flex space-x-0.5">
+                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </header>
       
       <main className="flex-1 overflow-y-auto w-full">
         <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6 pb-24">
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300"
+            >
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              <p className="text-sm">{error.message || 'An error occurred. Please try again.'}</p>
+            </motion.div>
+          )}
+          
           {messages.length === 0 ? (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}

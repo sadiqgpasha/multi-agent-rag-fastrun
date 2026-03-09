@@ -232,8 +232,8 @@ rag-multi-agent/
 # 1. Start local services
 docker-compose up -d
 
-# 2. Backend dev server
-cd backend && poetry shell && uvicorn app.main:app --reload
+# 2. Backend dev server (Poetry 2.0+)
+cd backend && poetry env activate && uvicorn app.main:app --reload
 
 # 3. Frontend dev server  
 cd frontend && npm run dev
