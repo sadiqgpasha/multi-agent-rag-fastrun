@@ -4,24 +4,33 @@
 
 ---
 
-<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
 
 # Complete Tech Stack for Multi-Agentic RAG Curriculum
 
 This tech stack covers **end-to-end development** of production multi-agent RAG systems, from local dev to AWS deployment. Organized by architectural layer with exact versions and installation commands.
+
+## 🧠 What is the project about?:
+
+This is a **"Team of Experts"** system. Instead of one AI trying to do everything at once, we’ve split the work between specialized "agents" who talk to each other to give you a high-quality answer.
+
+1.  **The Manager (Supervisor):** The brain of the operation. It listens to your question and decides who should handle it. It coordinates the hand-offs between other agents.
+2.  **The Librarian (Researcher Agent):** Searches your "Private Library" (Vector Database). It doesn't just guess; it retrieves actual facts from your PDFs and documents.
+3.  **The Writer (Synthesizer Agent):** Takes the Librarian's notes and turns them into a polite, structured, and easy-to-read response.
+4.  **RAG (Retrieval-Augmented Generation):** The process of **Searching** for facts first, **Adding** them to the AI's prompt, and then **Writing** the answer.
+5.  **The Orchestrator (LangGraph):** The "Flowchart" that ensures the agents don't get stuck in circles and follow a professional process.
 
 ## 🏗️ Architecture Layers
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌──────────────────┐
 │   Next.js UI    │◄──►│   FastAPI API    │◄──►│ AWS Deployment   │
-│ (TypeScript)    │    │ (Python Agents)  │    │ (SageMaker/etc)  │
+│ (TypeScript)    │    │ (Python Agents)  │    │  (Bedrock/S3)    │
 └─────────────────┘    └──────────────────┘    └──────────────────┘
          ▲                       ▲                       ▲
          │                       │                       │
 ┌─────────────────┐    ┌──────────────────┐    ┌──────────────────┐
 │   LangGraph     │◄──►│   Vector Store   │◄──►│   Monitoring      │
-│ (Multi-Agents)  │    │ (PGVector/Redis) │    │ (LangSmith/etc)  │
+│ (Multi-Agents)  │    │ (Chroma/PGVector)│    │ (LangSmith/etc)  │
 └─────────────────┘    └──────────────────┘    └──────────────────┘
 ```
 
@@ -30,29 +39,25 @@ This tech stack covers **end-to-end development** of production multi-agent RAG 
 
 | Tool | Version | Purpose | Install |
 | :-- | :-- | :-- | :-- |
-| **Next.js** | 15.0.0 | Server-side rendered AI chat UI | `npx create-next-app@15` |
+| **Next.js** | 15.0.0 | Turbo-powered AI chat UI | `npx create-next-app@15` |
 | **TypeScript** | 5.6.2 | Type-safe React components | `npm i -D typescript @types/react` |
-| **Vercel AI SDK** | ^4.0 | Streaming UI, agent responses | `npm i ai` |
-| **shadcn/ui** | latest | Production UI components | `npx shadcn-ui@latest init` |
-| **TailwindCSS** | 3.4 | Styling | Included in Next.js template |
-| **Zod** | 3.23 | Runtime validation | `npm i zod` |
+| **Vercel AI SDK** | **3.4.33** | Fixed: useChat hook logic | `npm i ai@3.4.33` |
+| **Framer Motion** | 12.0+ | Advanced UI transitions | `npm i framer-motion` |
+| **Lucide React** | latest | Premium iconography | `npm i lucide-react` |
+| **TailwindCSS** | **3.4.17** | Fixed: Stability on v3.4 | `npm i tailwindcss@~3.4.17` |
 
 **Frontend folder structure:**
 
 ```
-frontend/
+frontend/src/
 ├── app/
-│   ├── chat/page.tsx      # Main chat interface
-│   ├── api/chat/route.ts  # Streaming endpoint
-│   └── globals.css
+│   ├── page.tsx          # Main Chat UI (Full Layout)
+│   ├── api/chat/route.ts  # Streaming Proxy to FastAPI
+│   └── globals.css       # Tailwind v3 directives
 ├── components/
-│   ├── ui/               # shadcn components
-│   └── chat-ui.tsx       # Agent chat window
-├── lib/
-│   ├── ai.ts            # Vercel AI SDK setup
-│   └── utils.ts         # Zod schemas
-└── types/
-    └── agent.ts         # TypeScript interfaces
+│   └── ui/               # shadcn components
+└── lib/
+    └── ai.ts            # AI SDK configuration
 ```
 
 
@@ -60,12 +65,12 @@ frontend/
 
 | Tool | Version | Purpose | Install |
 | :-- | :-- | :-- | :-- |
-| **Python** | 3.11+ | Core runtime | `pyenv install 3.11.9` |
-| **FastAPI** | 0.115 | Production API server | `pip install fastapi[all] uvicorn` |
-| **LangChain** | 0.3.x | RAG chains, tools | `pip install langchain langchain-community` |
+| **Python** | 3.11+ | Multiagents Conda/Poetry | `conda activate multiagents` |
+| **FastAPI** | 0.115 | Real-time streaming API | `pip install fastapi[all]` |
 | **LangGraph** | 0.2.x | Multi-agent orchestration | `pip install langgraph` |
-| **Pydantic** | 2.9 | Data validation | `pip install pydantic` |
-| **LangServe** | 0.1.x | Agent API deployment | `pip install langserve` |
+| **LangChain AWS**| latest | Bedrock / Titan integration | `pip install langchain-aws` |
+| **Boto3** | latest | AWS SDK for Python | `pip install boto3` |
+| **ChromaDB** | latest | Offline vector persistence | `pip install chromadb` |
 
 **Backend folder structure:**
 
